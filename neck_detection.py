@@ -155,7 +155,8 @@ class MyApp(QDialog):
        
         self.lcd.display(self.deg)
         # return(degree)
-
+    def cal_raiselow(self):
+        
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
@@ -163,5 +164,3 @@ if __name__ == '__main__':
     window.setWindowTitle('Neck GUI')
     window.show()
     sys.exit(app.exec_())
-
-    #yyyyyyyy
