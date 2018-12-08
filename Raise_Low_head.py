@@ -27,7 +27,7 @@ def main():
     args = vars(ap.parse_args())
     pts = deque(maxlen=args["buffer"])
 
-    threshold = 100  # TODO Adapt to your needs.
+    threshold = 200  # TODO Adapt to your needs.
     kernel = np.ones((5, 5), np.uint8)
     cap = cv2.VideoCapture(0)
 
