@@ -27,7 +27,7 @@ def main():
     args = vars(ap.parse_args())
     pts = deque(maxlen=args["buffer"])
 
-    threshold = 200  # TODO Adapt to your needs.
+    threshold = 500  # TODO Adapt to your needs.
     kernel = np.ones((5, 5), np.uint8)
     cap = cv2.VideoCapture(0)
 
@@ -36,7 +36,7 @@ def main():
         blurred = cv2.GaussianBlur(frame, (11, 11), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-        mask_red = cv2.inRange(hsv, lower_pink, upper_pink)
+        mask_red = cv2.inRange(hsv, lower_red, upper_red)
         mask_red = cv2.erode(mask_red, kernel, iterations=2)
         mask_red = cv2.dilate(mask_red, kernel, iterations=2)
 
