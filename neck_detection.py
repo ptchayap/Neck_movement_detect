@@ -14,7 +14,7 @@ import numpy as np
 class MyApp(QDialog):
     def __init__(self):
         super(MyApp,self).__init__()
-        loadUi(r'.\neck_movement.ui',self)
+        loadUi(r'E:\Image_Processing\Project\Code\Neck_movement_detect-master\Neck_movement_detect\neck_movement.ui',self)
         self.image = None
         self.nose_init_x = 0
         self.raiselow.setChecked(True)
@@ -23,7 +23,7 @@ class MyApp(QDialog):
         self.start.clicked.connect(self.start_webcam)
         self.cap.clicked.connect(self.stop_webcam)
         self.detector = dlib.get_frontal_face_detector()
-        self.predictor = dlib.shape_predictor(r'.\shape_predictor_5_face_landmarks.dat')
+        self.predictor = dlib.shape_predictor(r'E:\Image_Processing\Project\Code\Neck_movement_detect-master\Neck_movement_detect\shape_predictor_68_face_landmarks.dat')
     
     def start_webcam(self):
         self.capture = cv2.VideoCapture(0)
@@ -33,7 +33,7 @@ class MyApp(QDialog):
         
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(5)
-        self.deg =0
+        self.deg = 0
         
     
     def update_frame(self):
@@ -42,28 +42,23 @@ class MyApp(QDialog):
         self.gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
         self.rects = self.detector(self.gray, 0) #detect face in the current frame (var = image)
         for rect in self.rects:
-            (bX, bY, bW, bH) = face_utils.rect_to_bb(rect)
             self.shape = self.predictor(self.gray, rect)
             self.shape = face_utils.shape_to_np(self.shape)
-            for (i, (x, y)) in enumerate(self.shape):
-                if i == 1:
-                    self.righteye = [x,y]
-                elif i == 3:
-                    self.lefteye = [x,y]
-                elif i == 4:
-                    self.nose = [x,y]
-                cv2.circle(self.image, (x, y), 1, (0, 0, 255), -1)
-       
+            point = [36,27,45,30,48,54,8] # L eye L corner, center of 2 eyes, R eye R corner, nose, L mouth angle, R mouth angle, chin
+            self.key = np.zeros(14,dtype='int').reshape(-1,2)
+            for i, x in enumerate(point):
+                if i==1:
+                    self.key[i,0],self.key[i,1] = (self.shape[39,0]+self.shape[42,0])/2 , (self.shape[39,1]+self.shape[42,1])/2
+                else:
+                    self.key[i,0] = self.shape[x,0]
+                    self.key[i,1] = self.shape[x,1]
+
         if self.raiselow.isChecked() == True :
             pass
         if self.rotation.isChecked() == True:
-            print("detect rotation")
             self.cal_rotation()
         if self.tilt.isChecked() == True:
-            print("detect tilt")
             self.cal_tilt()
-
-
         self.displayImage(self.image,1)
         # self.lcd.display(self.deg)
 
@@ -84,26 +79,24 @@ class MyApp(QDialog):
             self.imglabel.setPixmap(QPixmap.fromImage(outImage))
             self.imglabel.setScaledContents(True)
 
-    def cal_rotation(self):
-        center_x = int((self.righteye[0]+self.lefteye[0])/2)
-        center_y = int((self.righteye[1]+self.lefteye[1])/2)
-        #2D image points
-        image_points = np.array([
-    	                        (self.nose[0], self.nose[1]),
-        	                    (self.lefteye[0],self.lefteye[1]),     # Left eye left corner
-            	                (self.righteye[0], self.righteye[1]),     # Right eye right corner
-								(center_x,center_y)
-                    	        ], dtype="double")
-        y_dis_pixel = abs(self.nose[1]-center_y)
-        y_dis_mm = 170
-
+    def cal_rotation(self):  
         #3D model points
+        image_points = np.array([(self.key[3,0], self.key[3,1]),     # Nose tip
+                                (self.key[6,0], self.key[6,1]),       # Chin
+                                (self.key[0,0], self.key[0,1]),     # Left eye left cornerg
+                                (self.key[2,0], self.key[2,1]),     # Right eye right corne
+                                (self.key[4,0], self.key[4,1]),     # Left Mouth corner
+                                (self.key[5,0], self.key[5,1])      # Right mouth corner
+                                    ], dtype="double")
         model_points = np.array([
-    	                            (0,0,0),                    # nose tip
-        	                        (-225.0,170.0, -35.0),     # Left eye left corner
-            	                    (225.0,170.0, -35.0),      # Right eye right corne 
-								    (0.0, 170.0, 0.0) 		    # center of eyes
-                                    ])
+                            (0.0, 0.0, 0.0),             # Nose tip
+                            (0.0, -330.0, -65.0),        # Chin
+                            (-225.0, 170.0, -135.0),     # Left eye left corner
+                            (225.0, 170.0, -135.0),      # Right eye right corne
+                            (-150.0, -150.0, -125.0),    # Left Mouth corner
+                            (150.0, -150.0, -125.0)      # Right mouth corner
+        ])
+
         # camera internals
         size = self.image.shape
         focal_length = size[1]
@@ -117,38 +110,24 @@ class MyApp(QDialog):
         dist_coeffs = np.zeros((4,1)) #Assuming no lens distortion
         (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=0)
         (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
-        for p in image_points:
-            cv2.circle(self.image, (int(p[0]), int(p[1])), 3, (0,0,255), -1)
+        rotation_matrix,_ = cv2.Rodrigues(rotation_vector)
+        projection_matrix = np.hstack((rotation_matrix,translation_vector))
+        _,_,_,_,_,_,A = cv2.decomposeProjectionMatrix(projection_matrix)
+        _,yaw,_ = A
+        cv2.circle(self.image, (int(image_points[0][0]), int(image_points[0][1])), 3, (0,0,255), -1)
         p1 = ( int(image_points[0][0]), int(image_points[0][1]))
         p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
         cv2.line(self.image, p1, p2, (255,0,0), 2)
-        try:
-        # Angle calculation
-            x_dis = abs(p1[0]-p2[0])
-            z_dis = 1000*(y_dis_pixel/y_dis_mm)
-            radian = math.asin(x_dis/z_dis)
-            angle = math.degrees(radian)
-            self.deg = int(angle)
-        except:
-            pass
+        self.deg = yaw
         self.lcd.display(self.deg)
 
     def cal_tilt(self):
         
-        center_x = int((self.righteye[0]+self.lefteye[0])/2)
-        center_y = int((self.righteye[1]+self.lefteye[1])/2)
-		
-        nose_x = self.nose[0]
-        nose_y = self.nose[1]
-       
-        cv2.circle(self.image,(center_x,center_y),1,(0,0,255),-1)
-        cv2.line(self.image,(center_x,center_y),(nose_x,nose_y),(0,255,0),2)
-
-        dist_x = nose_x - center_x
-         
-        cen_to_nose = math.sqrt(pow(center_x-nose_x,2)+pow(center_y-nose_y,2))
+        cv2.line(self.image,(self.key[1,0],self.key[1,1]),(self.key[3,0],self.key[3,1]),(0,255,0),2)
+        dis_x = self.key[1,0]-self.key[3,0]
+        cen_to_nose = math.sqrt(pow(self.key[1,0]-self.key[3,0],2)+pow(self.key[1,1]-self.key[3,1],2))
         try:
-            rad = math.asin(dist_x/cen_to_nose)
+            rad = math.asin(dis_x/cen_to_nose)
             self.deg = int(math.degrees(rad))
         except:
             pass

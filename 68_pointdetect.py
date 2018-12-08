@@ -60,8 +60,7 @@ while True:
         cv2.circle(frame, (int(image_points[0,0]), int(image_points[0,1])), 3, (0,0,255), -1)
         projectoin_matrix = np.hstack((rotation_vector,translation_vector))
         _,_,_,_,_,_,A = cv2.decomposeProjectionMatrix(projectoin_matrix)
-        print(A)
-        pitch, yaw, roll = [math.radians(_) for _ in A]
+        pitch, yaw, roll = A
         print(yaw)
         p1 = ( int(image_points[0][0]), int(image_points[0][1]))
         p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
