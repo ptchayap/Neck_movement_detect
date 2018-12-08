@@ -134,7 +134,8 @@ class MyApp(QDialog):
        
         self.lcd.display(self.deg)
         # return(degree)
-
+    def cal_raiselow(self):
+        
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
