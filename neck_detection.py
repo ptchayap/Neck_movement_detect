@@ -26,9 +26,11 @@ class MyApp(QDialog):
         self.cap.clicked.connect(self.stop_webcam)
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(r'E:\Image_Processing\Project\Code\Neck_movement_detect-master\Neck_movement_detect\shape_predictor_68_face_landmarks.dat')
-    
+        
+
     def start_webcam(self):
-        self.capture = cv2.VideoCapture(0)
+        self.capture = cv2.VideoCapture(1)
+        self.count = 0
         # self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT,300)
         # self.capture.set(cv2.CAP_PROP_FRAME_WIDTH,400)
         self.timer = QTimer(self)
@@ -37,9 +39,10 @@ class MyApp(QDialog):
         self.timer.start(5)
         self.deg = 0
         
+        
     
     def update_frame(self):
-        ret,self.image = self.capture.read()
+        _,self.image = self.capture.read()
         self.image = cv2.flip(self.image,1)
         self.gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
         self.rects = self.detector(self.gray, 0) #detect face in the current frame (var = image)
@@ -252,22 +255,26 @@ class MyApp(QDialog):
                            (0, 255, 255), 2)
                 cv2.circle(self.image, center_b, 5, (0, 0, 255), -1)
         # make triangle
+        print(self.count)
         if len(cnts_r and cnts_g and cnts_b) > 0:
-            if count == 0:
+            if self.count == 0:
                 ref_c7_to_aom = math.sqrt(((center_g[0] - center_b[0]) ** 2) + ((center_g[1] - center_b[1]) ** 2))
                 ref_aom_to_chin = math.sqrt(((center_b[0] - center_r[0]) ** 2) + ((center_b[1] - center_r[1]) ** 2))
                 ref_c7_to_chin = math.sqrt(((center_g[0] - center_r[0]) ** 2) + ((center_g[1] - center_r[1]) ** 2))
-                ref_rad = math.acos((ref_aom_to_chin**2+ref_c7_to_aom**2-ref_c7_to_chin**2)/(2*ref_c7_to_aom*ref_aom_to_chin))
-                count = count+1
+                self.ref_rad = math.acos((ref_aom_to_chin**2+ref_c7_to_aom**2-ref_c7_to_chin**2)/(2*ref_c7_to_aom*ref_aom_to_chin))
+                self.count = self.count + 1
+                self.new_rad = 0
+                
             else:
                 c7_to_aom = math.sqrt(((center_g[0] - center_b[0]) ** 2) + ((center_g[1] - center_b[1]) ** 2))
                 aom_to_chin = math.sqrt(((center_b[0] - center_r[0]) ** 2) + ((center_b[1] - center_r[1]) ** 2))
                 c7_to_chin = math.sqrt(((center_g[0] - center_r[0]) ** 2) + ((center_g[1] - center_r[1]) ** 2))
-                new_rad = math.acos((aom_to_chin ** 2 + c7_to_aom ** 2 - c7_to_chin ** 2) / (2 * c7_to_aom * aom_to_chin))
+                self.new_rad = math.acos((aom_to_chin ** 2 + c7_to_aom ** 2 - c7_to_chin ** 2) / (2 * c7_to_aom * aom_to_chin))
         # calculate different angle
         try:
-            rad = new_rad-ref_rad
-            self.deg = math.degrees(rad)
+            self.deg = math.degrees(self.new_rad)-math.degrees(self.ref_rad)
+            self.deg = int(self.deg)
+            print(self.deg)
         except:
             pass
         self.lcd.display(self.deg)

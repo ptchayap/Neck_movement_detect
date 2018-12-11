@@ -29,14 +29,14 @@ def main():
 
     threshold = 500  # TODO Adapt to your needs.
     kernel = np.ones((5, 5), np.uint8)
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     while True:
         _, frame = cap.read()
         blurred = cv2.GaussianBlur(frame, (11, 11), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-        mask_red = cv2.inRange(hsv, lower_red, upper_red)
+        mask_red = cv2.inRange(hsv, lower_pink, upper_pink)
         mask_red = cv2.erode(mask_red, kernel, iterations=2)
         mask_red = cv2.dilate(mask_red, kernel, iterations=2)
 
@@ -76,6 +76,7 @@ def main():
             M_r = cv2.moments(c_r)
             center_r = (int(M_r["m10"] / M_r["m00"]), int(M_r["m01"] / M_r["m00"]))
 
+            # red is chin
             # only proceed if the radius meets a minimum size
             if radius_r > 10:
                 # draw the circle and centroid on the frame,
@@ -100,7 +101,7 @@ def main():
                 thickness = int(np.sqrt(args["buffer"] / float(i + 1)) * 2.5)
                 cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
 
-
+        #green is C7
         if len(cnts_g) > 0:
             c_g = max(cnts_g, key=cv2.contourArea)
             ((x_g, y_g), radius_g) = cv2.minEnclosingCircle(c_g)
@@ -114,6 +115,7 @@ def main():
                            (0, 255, 255), 2)
                 cv2.circle(frame, center_g, 5, (0, 0, 255), -1)
 
+        #blue is angle of mandible (aom)
         if len(cnts_b) > 0:
             c_b = max(cnts_b, key=cv2.contourArea)
             ((x_b, y_b), radius_b) = cv2.minEnclosingCircle(c_b)
@@ -126,6 +128,7 @@ def main():
                 cv2.circle(frame, (int(x_b), int(y_b)), int(radius_b),
                            (0, 255, 255), 2)
                 cv2.circle(frame, center_b, 5, (0, 0, 255), -1)
+        # cv2.line(frame,(center_r[0],center_r[1]),(center_b[0],center_b[1]),(0,0,255),2)
         # make triangle
         if len(cnts_r and cnts_g and cnts_b) > 0:
             if count == 0:
