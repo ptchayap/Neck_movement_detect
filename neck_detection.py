@@ -116,55 +116,57 @@ class MyApp(QDialog):
 
     def cal_rotation(self):  
         #3D model points
-        image_points = np.array([(self.key[3,0], self.key[3,1]),     # Nose tip
-                                (self.key[6,0], self.key[6,1]),       # Chin
-                                (self.key[0,0], self.key[0,1]),     # Left eye left cornerg
-                                (self.key[2,0], self.key[2,1]),     # Right eye right corne
-                                (self.key[4,0], self.key[4,1]),     # Left Mouth corner
-                                (self.key[5,0], self.key[5,1])      # Right mouth corner
-                                    ], dtype="double")
-        model_points = np.array([
-                            (0.0, 0.0, 0.0),             # Nose tip
-                            (0.0, -330.0, -65.0),        # Chin
-                            (-225.0, 170.0, -135.0),     # Left eye left corner
-                            (225.0, 170.0, -135.0),      # Right eye right corne
-                            (-150.0, -150.0, -125.0),    # Left Mouth corner
-                            (150.0, -150.0, -125.0)      # Right mouth corner
-        ])
+        try:
+            image_points = np.array([(self.key[3,0], self.key[3,1]),     # Nose tip
+                                    (self.key[6,0], self.key[6,1]),       # Chin
+                                    (self.key[0,0], self.key[0,1]),     # Left eye left cornerg
+                                    (self.key[2,0], self.key[2,1]),     # Right eye right corne
+                                    (self.key[4,0], self.key[4,1]),     # Left Mouth corner
+                                    (self.key[5,0], self.key[5,1])      # Right mouth corner
+                                        ], dtype="double")
+            model_points = np.array([
+                                (0.0, 0.0, 0.0),             # Nose tip
+                                (0.0, -330.0, -65.0),        # Chin
+                                (-225.0, 170.0, -135.0),     # Left eye left corner
+                                (225.0, 170.0, -135.0),      # Right eye right corne
+                                (-150.0, -150.0, -125.0),    # Left Mouth corner
+                                (150.0, -150.0, -125.0)      # Right mouth corner
+            ])
 
-        # camera internals
-        size = self.image.shape
-        focal_length = size[1]
-        center = (size[1]/2, size[0]/2)
-        camera_matrix = np.array(
-    	                     [[focal_length, 0, center[0]],
-        	                 [0, focal_length, center[1]],
-            	             [0, 0, 1]], dtype = "double"
-                	         )
-	    #print("Camera Matrix :\n {0}".format(camera_matrix))
-        dist_coeffs = np.zeros((4,1)) #Assuming no lens distortion
-        (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=0)
-        (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
-        rotation_matrix,_ = cv2.Rodrigues(rotation_vector)
-        projection_matrix = np.hstack((rotation_matrix,translation_vector))
-        _,_,_,_,_,_,A = cv2.decomposeProjectionMatrix(projection_matrix)
-        _,yaw,_ = A
-        cv2.circle(self.image, (int(image_points[0][0]), int(image_points[0][1])), 3, (0,0,255), -1)
-        p1 = ( int(image_points[0][0]), int(image_points[0][1]))
-        p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
-        cv2.line(self.image, p1, p2, (255,0,0), 2)
+            # camera internals
+            size = self.image.shape
+            focal_length = size[1]
+            center = (size[1]/2, size[0]/2)
+            camera_matrix = np.array(
+                                [[focal_length, 0, center[0]],
+                                [0, focal_length, center[1]],
+                                [0, 0, 1]], dtype = "double"
+                                )
+            #print("Camera Matrix :\n {0}".format(camera_matrix))
+            dist_coeffs = np.zeros((4,1)) #Assuming no lens distortion
+            (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=0)
+            (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
+            rotation_matrix,_ = cv2.Rodrigues(rotation_vector)
+            projection_matrix = np.hstack((rotation_matrix,translation_vector))
+            _,_,_,_,_,_,A = cv2.decomposeProjectionMatrix(projection_matrix)
+            _,yaw,_ = A
+            cv2.circle(self.image, (int(image_points[0][0]), int(image_points[0][1])), 3, (0,0,255), -1)
+            p1 = ( int(image_points[0][0]), int(image_points[0][1]))
+            p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
+            cv2.line(self.image, p1, p2, (255,0,0), 2)
+        except:
+            yaw = 0
         return(int(yaw))
 
     def cal_tilt(self):
-        
-        cv2.line(self.image,(self.key[1,0],self.key[1,1]),(self.key[3,0],self.key[3,1]),(0,255,0),2)
-        dis_x = self.key[1,0]-self.key[3,0]
-        cen_to_nose = math.sqrt(pow(self.key[1,0]-self.key[3,0],2)+pow(self.key[1,1]-self.key[3,1],2))
         try:
+            cv2.line(self.image,(self.key[1,0],self.key[1,1]),(self.key[3,0],self.key[3,1]),(0,255,0),2)
+            dis_x = self.key[1,0]-self.key[3,0]
+            cen_to_nose = math.sqrt(pow(self.key[1,0]-self.key[3,0],2)+pow(self.key[1,1]-self.key[3,1],2))
             rad = math.asin(dis_x/cen_to_nose)
             deg=math.degrees(rad)
         except:
-            pass
+            deg = 0
         return(int(-deg))
 
     def cal_raiselow(self):
@@ -204,103 +206,103 @@ class MyApp(QDialog):
         mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
         mask_blue = cv2.erode(mask_blue, kernel, iterations=2)
         mask_blue = cv2.dilate(mask_blue, kernel, iterations=2)
+        try:
+            result = cv2.bitwise_and(blurred, blurred, mask=mask_red+mask_green+mask_blue)
+            # find contours in the mask and initialize the current
+            # (x, y) center of the ball
+            cnts_r = cv2.findContours(mask_red.copy(), cv2.RETR_EXTERNAL,
+                                    cv2.CHAIN_APPROX_SIMPLE)
+            cnts_r = cnts_r[0] if imutils.is_cv2() else cnts_r[1]
+            center_r = None
 
-        result = cv2.bitwise_and(blurred, blurred, mask=mask_red+mask_green+mask_blue)
-        # find contours in the mask and initialize the current
-        # (x, y) center of the ball
-        cnts_r = cv2.findContours(mask_red.copy(), cv2.RETR_EXTERNAL,
-                                cv2.CHAIN_APPROX_SIMPLE)
-        cnts_r = cnts_r[0] if imutils.is_cv2() else cnts_r[1]
-        center_r = None
+            cnts_g = cv2.findContours(mask_green.copy(), cv2.RETR_EXTERNAL,
+                                    cv2.CHAIN_APPROX_SIMPLE)
+            cnts_g = cnts_g[0] if imutils.is_cv2() else cnts_g[1]
+            center_g = None
 
-        cnts_g = cv2.findContours(mask_green.copy(), cv2.RETR_EXTERNAL,
-                                cv2.CHAIN_APPROX_SIMPLE)
-        cnts_g = cnts_g[0] if imutils.is_cv2() else cnts_g[1]
-        center_g = None
+            cnts_b = cv2.findContours(mask_blue.copy(), cv2.RETR_EXTERNAL,
+                                    cv2.CHAIN_APPROX_SIMPLE)
+            cnts_b = cnts_b[0] if imutils.is_cv2() else cnts_b[1]
+            center_b = None
+            # only proceed if at least one contour was found
+            if len(cnts_r) > 0:
+                # find the largest contour in the mask, then use
+                # it to compute the minimum enclosing circle and
+                # centroid
+                c_r = max(cnts_r, key=cv2.contourArea)
+                ((x_r, y_r), radius_r) = cv2.minEnclosingCircle(c_r)
+                M_r = cv2.moments(c_r)
+                center_r = (int(M_r["m10"] / M_r["m00"]), int(M_r["m01"] / M_r["m00"]))
 
-        cnts_b = cv2.findContours(mask_blue.copy(), cv2.RETR_EXTERNAL,
-                                  cv2.CHAIN_APPROX_SIMPLE)
-        cnts_b = cnts_b[0] if imutils.is_cv2() else cnts_b[1]
-        center_b = None
-        # only proceed if at least one contour was found
-        if len(cnts_r) > 0:
-            # find the largest contour in the mask, then use
-            # it to compute the minimum enclosing circle and
-            # centroid
-            c_r = max(cnts_r, key=cv2.contourArea)
-            ((x_r, y_r), radius_r) = cv2.minEnclosingCircle(c_r)
-            M_r = cv2.moments(c_r)
-            center_r = (int(M_r["m10"] / M_r["m00"]), int(M_r["m01"] / M_r["m00"]))
-
-            # only proceed if the radius meets a minimum size
-            if radius_r > 5:
-                # draw the circle and centroid on the frame,
-                # then update the list of tracked points
-                cv2.circle(self.image, (int(x_r), int(y_r)), int(radius_r),
-                           (0, 255, 255), 2)
-                cv2.circle(self.image, center_r, 5, (0, 0, 255), -1)
-
-
-            # line
-                # update the points queue
-            pts.appendleft(center_r)
-            # loop over the set of tracked points
-            for i in range(1, len(pts)):
-                # if either of the tracked points are None, ignore
-                # them
-                if pts[i - 1] is None or pts[i] is None:
-                    continue
-
-                # otherwise, compute the thickness of the line and
-                # draw the connecting lines
-                thickness = int(np.sqrt(args["buffer"] / float(i + 1)) * 2.5)
-                cv2.line(self.image, pts[i - 1], pts[i], (0, 0, 255), thickness)
+                # only proceed if the radius meets a minimum size
+                if radius_r > 5:
+                    # draw the circle and centroid on the frame,
+                    # then update the list of tracked points
+                    cv2.circle(self.image, (int(x_r), int(y_r)), int(radius_r),
+                            (0, 255, 255), 2)
+                    cv2.circle(self.image, center_r, 5, (0, 0, 255), -1)
 
 
-        if len(cnts_g) > 0:
-            c_g = max(cnts_g, key=cv2.contourArea)
-            ((x_g, y_g), radius_g) = cv2.minEnclosingCircle(c_g)
-            M_g = cv2.moments(c_g)
-            center_g = (int(M_g["m10"] / M_g["m00"]), int(M_g["m01"] / M_g["m00"]))
+                # line
+                    # update the points queue
+                pts.appendleft(center_r)
+                # loop over the set of tracked points
+                for i in range(1, len(pts)):
+                    # if either of the tracked points are None, ignore
+                    # them
+                    if pts[i - 1] is None or pts[i] is None:
+                        continue
 
-            if radius_g > 5:
-                # draw the circle and centroid on the frame,
-                # then update the list of tracked points
-                cv2.circle(self.image, (int(x_g), int(y_g)), int(radius_g),
-                           (0, 255, 255), 2)
-                cv2.circle(self.image, center_g, 5, (0, 0, 255), -1)
+                    # otherwise, compute the thickness of the line and
+                    # draw the connecting lines
+                    thickness = int(np.sqrt(args["buffer"] / float(i + 1)) * 2.5)
+                    cv2.line(self.image, pts[i - 1], pts[i], (0, 0, 255), thickness)
 
-        if len(cnts_b) > 0:
-            c_b = max(cnts_b, key=cv2.contourArea)
-            ((x_b, y_b), radius_b) = cv2.minEnclosingCircle(c_b)
-            M_b = cv2.moments(c_b)
-            center_b = (int(M_b["m10"] / M_b["m00"]), int(M_b["m01"] / M_b["m00"]))
 
-            if radius_b > 5:
-                # draw the circle and centroid on the frame,
-                # then update the list of tracked points
-                cv2.circle(self.image, (int(x_b), int(y_b)), int(radius_b),
-                           (0, 255, 255), 2)
-                cv2.circle(self.image, center_b, 5, (0, 0, 255), -1)
-        # make triangle
-        # diameter realword of red point = 19 mm. in the picture = radius_a*2 pixel
-        # equation : x = [pixel] * 19mm / radius_a*2
-        cv2.line(self.image,(center_r[0],center_r[1]),(center_b[0],center_b[1]),(0,0,255),2)
-        cv2.line(self.image,(center_b[0],center_b[1]),(center_g[0],center_g[1]),(0,255,0),2)
+            if len(cnts_g) > 0:
+                c_g = max(cnts_g, key=cv2.contourArea)
+                ((x_g, y_g), radius_g) = cv2.minEnclosingCircle(c_g)
+                M_g = cv2.moments(c_g)
+                center_g = (int(M_g["m10"] / M_g["m00"]), int(M_g["m01"] / M_g["m00"]))
 
-        if len(cnts_r and cnts_g and cnts_b) > 0:  
-            c7_to_aom = math.sqrt(((center_g[0] - center_b[0]) ** 2) + ((center_g[1] - center_b[1]) ** 2))
-            aom_to_chin = math.sqrt(((center_b[0] - center_r[0]) ** 2) + ((center_b[1] - center_r[1]) ** 2))
-            c7_to_chin = math.sqrt(((center_g[0] - center_r[0]) ** 2) + ((center_g[1] - center_r[1]) ** 2))
-            self.new_rad = math.acos((aom_to_chin ** 2 + c7_to_aom ** 2 - c7_to_chin ** 2) / (2 * c7_to_aom * aom_to_chin))
-            distance = int((aom_to_chin*19)/(radius_g*2))
-            distance_2 = int((c7_to_aom*19)/(radius_g*2))
-            cv2.putText(self.image,str(distance) +'mm.',(int((center_r[0]+center_b[0])/2),int((center_r[1]+center_b[1])/2-3)),cv2.FONT_HERSHEY_SIMPLEX,1, (0, 0, 255), 2)
-            cv2.putText(self.image,str(distance_2) +'mm.',(int((center_g[0]+center_b[0])/2+3),int((center_g[1]+center_b[1])/2)),cv2.FONT_HERSHEY_SIMPLEX,1, (0,255, 0), 2)
+                if radius_g > 5:
+                    # draw the circle and centroid on the frame,
+                    # then update the list of tracked points
+                    cv2.circle(self.image, (int(x_g), int(y_g)), int(radius_g),
+                            (0, 255, 255), 2)
+                    cv2.circle(self.image, center_g, 5, (0, 0, 255), -1)
+
+            if len(cnts_b) > 0:
+                c_b = max(cnts_b, key=cv2.contourArea)
+                ((x_b, y_b), radius_b) = cv2.minEnclosingCircle(c_b)
+                M_b = cv2.moments(c_b)
+                center_b = (int(M_b["m10"] / M_b["m00"]), int(M_b["m01"] / M_b["m00"]))
+
+                if radius_b > 5:
+                    # draw the circle and centroid on the frame,
+                    # then update the list of tracked points
+                    cv2.circle(self.image, (int(x_b), int(y_b)), int(radius_b),
+                            (0, 255, 255), 2)
+                    cv2.circle(self.image, center_b, 5, (0, 0, 255), -1)
+            # make triangle
+            # diameter realword of red point = 19 mm. in the picture = radius_a*2 pixel
+            # equation : x = [pixel] * 19mm / radius_a*2
+            cv2.line(self.image,(center_r[0],center_r[1]),(center_b[0],center_b[1]),(0,0,255),2)
+            cv2.line(self.image,(center_b[0],center_b[1]),(center_g[0],center_g[1]),(0,255,0),2)
+
+            if len(cnts_r and cnts_g and cnts_b) > 0:  
+                c7_to_aom = math.sqrt(((center_g[0] - center_b[0]) ** 2) + ((center_g[1] - center_b[1]) ** 2))
+                aom_to_chin = math.sqrt(((center_b[0] - center_r[0]) ** 2) + ((center_b[1] - center_r[1]) ** 2))
+                c7_to_chin = math.sqrt(((center_g[0] - center_r[0]) ** 2) + ((center_g[1] - center_r[1]) ** 2))
+                self.new_rad = math.acos((aom_to_chin ** 2 + c7_to_aom ** 2 - c7_to_chin ** 2) / (2 * c7_to_aom * aom_to_chin))
+                distance = int((aom_to_chin*19)/(radius_g*2))
+                distance_2 = int((c7_to_aom*19)/(radius_g*2))
+                cv2.putText(self.image,str(distance) +'mm.',(int((center_r[0]+center_b[0])/2),int((center_r[1]+center_b[1])/2-3)),cv2.FONT_HERSHEY_SIMPLEX,1, (0, 0, 255), 2)
+                cv2.putText(self.image,str(distance_2) +'mm.',(int((center_g[0]+center_b[0])/2+3),int((center_g[1]+center_b[1])/2)),cv2.FONT_HERSHEY_SIMPLEX,1, (0,255, 0), 2)
         
         
         # calculate different angle
-        try:
+        
             deg = math.degrees(self.new_rad)-self.ref_deg
             deg = int(deg)
         except:
