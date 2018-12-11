@@ -16,25 +16,32 @@ from collections import deque
 class MyApp(QDialog):
     def __init__(self):
         super(MyApp,self).__init__()
-        loadUi(r'E:\Image_Processing\Project\Code\Neck_movement_detect-master\Neck_movement_detect\neck_movement.ui',self)
+        loadUi(r'E:\Image_Processing\Project\Code\Neck_movement_detect-master\Neck_movement_detect\qttest.ui',self)
         self.image = None
         self.nose_init_x = 0
+        self.click_capture =0
         self.raiselow.setChecked(True)
         self.tilt.setChecked(True)
         self.rotation.setChecked(True)
         self.start.clicked.connect(self.start_webcam)
         self.cap.clicked.connect(self.stop_webcam)
+        self.reset.clicked.connect(self.reset_system)
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(r'E:\Image_Processing\Project\Code\Neck_movement_detect-master\Neck_movement_detect\shape_predictor_68_face_landmarks.dat')
         
+    def reset_system(self):
+        self.click_capture = 0
+        self.lcd_ref.display(0)
+        self.lcd_right.display(0)
+        self.lcd_left.display(0)
+        self.text_left.setText('Left')
+        self.text_right.setText('Right')
+        
 
     def start_webcam(self):
-        self.capture = cv2.VideoCapture(1)
+        self.capture = cv2.VideoCapture(0)
         self.count = 0
-        # self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT,300)
-        # self.capture.set(cv2.CAP_PROP_FRAME_WIDTH,400)
         self.timer = QTimer(self)
-        
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(5)
         self.deg = 0
@@ -59,16 +66,39 @@ class MyApp(QDialog):
                     self.key[i,1] = self.shape[x,1]
 
         if self.raiselow.isChecked() == True :
-            self.cal_raiselow()
+            self.text_left.setText('Up')
+            self.text_right.setText('Down')
+            self.deg = self.cal_raiselow()
         if self.rotation.isChecked() == True:
-            self.cal_rotation()
+            self.text_left.setText('Left')
+            self.text_right.setText('Right')
+            self.deg = self.cal_rotation()
         if self.tilt.isChecked() == True:
-            self.cal_tilt()
+            self.text_left.setText('Left')
+            self.text_right.setText('Right')
+            self.deg = self.cal_tilt()
         self.displayImage(self.image,1)
+        print(self.click_capture)
+        if self.click_capture == 0:
+            self.ref_deg = self.deg
+            if self.ref_deg < 0:
+                self.ref_direc.setText('R')
+            else:
+                self.ref_direc.setText('L')
+            self.lcd_ref.display(abs(self.ref_deg))
+        elif self.click_capture ==1:
+            if self.deg < 0:
+                self.deg = 0
+            self.lcd_left.display(abs(self.deg))
+        elif self.click_capture ==2:
+            if self.deg > 0:
+                self.deg = 0
+            self.lcd_right.display(abs(self.deg))
         
 
 
     def stop_webcam(self):
+        self.click_capture+=1
         self.timer.stop()
     
     def displayImage(self,img,window=1):
@@ -81,8 +111,8 @@ class MyApp(QDialog):
         outImage = QImage(img,img.shape[1],img.shape[0],img.strides[0],qformat)
         outImage = outImage.rgbSwapped()
         if window ==1:
-            self.imglabel.setPixmap(QPixmap.fromImage(outImage))
-            self.imglabel.setScaledContents(True)
+            self.window.setPixmap(QPixmap.fromImage(outImage))
+            self.window.setScaledContents(True)
 
     def cal_rotation(self):  
         #3D model points
@@ -123,8 +153,7 @@ class MyApp(QDialog):
         p1 = ( int(image_points[0][0]), int(image_points[0][1]))
         p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
         cv2.line(self.image, p1, p2, (255,0,0), 2)
-        self.deg = yaw
-        self.lcd.display(self.deg)
+        return(int(yaw))
 
     def cal_tilt(self):
         
@@ -133,13 +162,13 @@ class MyApp(QDialog):
         cen_to_nose = math.sqrt(pow(self.key[1,0]-self.key[3,0],2)+pow(self.key[1,1]-self.key[3,1],2))
         try:
             rad = math.asin(dis_x/cen_to_nose)
-            self.deg = int(math.degrees(rad))
+            deg=math.degrees(rad)
         except:
             pass
-       
-        self.lcd.display(self.deg)
-        # return(degree)
+        return(int(-deg))
+
     def cal_raiselow(self):
+        self.ref_direc.setText('-')
         lower_pink = np.array([160, 100, 150])
         upper_pink = np.array([180, 255, 255])
         lower_red = np.array([150, 150, 50])
@@ -147,11 +176,10 @@ class MyApp(QDialog):
         lower_green = np.array([40, 100, 50])
         upper_green = np.array([80, 255, 255])
         lower_blue = np.array([80, 60, 50])
-        upper_blue = np.array([150, 255, 150])
+        upper_blue = np.array([150, 255, 200])
 
         ref_rad = None
         new_rad = None
-        count = 0
         angle = None
 
         ap = argparse.ArgumentParser()
@@ -205,7 +233,7 @@ class MyApp(QDialog):
             center_r = (int(M_r["m10"] / M_r["m00"]), int(M_r["m01"] / M_r["m00"]))
 
             # only proceed if the radius meets a minimum size
-            if radius_r > 10:
+            if radius_r > 5:
                 # draw the circle and centroid on the frame,
                 # then update the list of tracked points
                 cv2.circle(self.image, (int(x_r), int(y_r)), int(radius_r),
@@ -235,7 +263,7 @@ class MyApp(QDialog):
             M_g = cv2.moments(c_g)
             center_g = (int(M_g["m10"] / M_g["m00"]), int(M_g["m01"] / M_g["m00"]))
 
-            if radius_g > 10:
+            if radius_g > 5:
                 # draw the circle and centroid on the frame,
                 # then update the list of tracked points
                 cv2.circle(self.image, (int(x_g), int(y_g)), int(radius_g),
@@ -248,36 +276,36 @@ class MyApp(QDialog):
             M_b = cv2.moments(c_b)
             center_b = (int(M_b["m10"] / M_b["m00"]), int(M_b["m01"] / M_b["m00"]))
 
-            if radius_b > 10:
+            if radius_b > 5:
                 # draw the circle and centroid on the frame,
                 # then update the list of tracked points
                 cv2.circle(self.image, (int(x_b), int(y_b)), int(radius_b),
                            (0, 255, 255), 2)
                 cv2.circle(self.image, center_b, 5, (0, 0, 255), -1)
         # make triangle
-        print(self.count)
-        if len(cnts_r and cnts_g and cnts_b) > 0:
-            if self.count == 0:
-                ref_c7_to_aom = math.sqrt(((center_g[0] - center_b[0]) ** 2) + ((center_g[1] - center_b[1]) ** 2))
-                ref_aom_to_chin = math.sqrt(((center_b[0] - center_r[0]) ** 2) + ((center_b[1] - center_r[1]) ** 2))
-                ref_c7_to_chin = math.sqrt(((center_g[0] - center_r[0]) ** 2) + ((center_g[1] - center_r[1]) ** 2))
-                self.ref_rad = math.acos((ref_aom_to_chin**2+ref_c7_to_aom**2-ref_c7_to_chin**2)/(2*ref_c7_to_aom*ref_aom_to_chin))
-                self.count = self.count + 1
-                self.new_rad = 0
-                
-            else:
-                c7_to_aom = math.sqrt(((center_g[0] - center_b[0]) ** 2) + ((center_g[1] - center_b[1]) ** 2))
-                aom_to_chin = math.sqrt(((center_b[0] - center_r[0]) ** 2) + ((center_b[1] - center_r[1]) ** 2))
-                c7_to_chin = math.sqrt(((center_g[0] - center_r[0]) ** 2) + ((center_g[1] - center_r[1]) ** 2))
-                self.new_rad = math.acos((aom_to_chin ** 2 + c7_to_aom ** 2 - c7_to_chin ** 2) / (2 * c7_to_aom * aom_to_chin))
+        # diameter realword of red point = 19 mm. in the picture = radius_a*2 pixel
+        # equation : x = [pixel] * 19mm / radius_a*2
+        cv2.line(self.image,(center_r[0],center_r[1]),(center_b[0],center_b[1]),(0,0,255),2)
+        cv2.line(self.image,(center_b[0],center_b[1]),(center_g[0],center_g[1]),(0,255,0),2)
+
+        if len(cnts_r and cnts_g and cnts_b) > 0:  
+            c7_to_aom = math.sqrt(((center_g[0] - center_b[0]) ** 2) + ((center_g[1] - center_b[1]) ** 2))
+            aom_to_chin = math.sqrt(((center_b[0] - center_r[0]) ** 2) + ((center_b[1] - center_r[1]) ** 2))
+            c7_to_chin = math.sqrt(((center_g[0] - center_r[0]) ** 2) + ((center_g[1] - center_r[1]) ** 2))
+            self.new_rad = math.acos((aom_to_chin ** 2 + c7_to_aom ** 2 - c7_to_chin ** 2) / (2 * c7_to_aom * aom_to_chin))
+            distance = int((aom_to_chin*19)/(radius_g*2))
+            distance_2 = int((c7_to_aom*19)/(radius_g*2))
+            cv2.putText(self.image,str(distance) +'mm.',(int((center_r[0]+center_b[0])/2),int((center_r[1]+center_b[1])/2-3)),cv2.FONT_HERSHEY_SIMPLEX,1, (0, 0, 255), 2)
+            cv2.putText(self.image,str(distance_2) +'mm.',(int((center_g[0]+center_b[0])/2+3),int((center_g[1]+center_b[1])/2)),cv2.FONT_HERSHEY_SIMPLEX,1, (0,255, 0), 2)
+        
+        
         # calculate different angle
         try:
-            self.deg = math.degrees(self.new_rad)-math.degrees(self.ref_rad)
-            self.deg = int(self.deg)
-            print(self.deg)
+            deg = math.degrees(self.new_rad)-self.ref_deg
+            deg = int(deg)
         except:
-            pass
-        self.lcd.display(self.deg)
+            deg = 0
+        return(deg)
         
         
 
